@@ -1,52 +1,76 @@
-# apple-kbd-dat-icon-extract.py
 
-After creating a custom [1] keyboard layout with
-[Ukelele](http://scripts.sil.org/cms/scripts/page.php?site_id=nrsi&id=ukelele),
-I wanted it to match the original layout's icon.  It turns out that OS X stores
-the country flags in
-`/System/Library/Keyboard Layouts/AppleKeyboardLayouts.bundle/Contents/Resources/AppleKeyboardLayouts-L.dat`.
+# MacOS Keyboard Input/Layout Icon Extractor
 
-I don't know the exact structure of that file, but the icons are simply
-there (look for icns in hex, i.e. 0x69636e73).
+This project provides a script for extracting `.icns` icons from macOS keyboard layout `.dat` files. It is an enhanced version of the original script by [Philip Belemezov](https://github.com/phible), updated for Python 3 compatibility and improved usability.
 
-`apple-kbd-dat-icon-extract.py` is a quick and dirty script the exracts the
-icons (*icns* files) from the above file and writes them to the specified
-output directory.
+---
 
+## **Features**
+- **Python 3 Compatibility:** Fully updated to work with Python 3.
+- **Enhanced Error Handling:** Safeguards against empty files, malformed data, and permission issues.
+- **Progress Bar:** Added a visual progress bar using `tqdm` for large files.
+- **Dynamic Logging Levels:** Choose between `DEBUG`, `INFO`, `WARNING`, or `ERROR` for detailed control over output.
+- **Automatic Output Directory Creation:** The script creates the specified output directory if it doesn’t already exist.
+- **Modular Design:** Clean and testable code structure for future enhancements.
 
-[1] Not really custom.  OS X doesn't support the [БДС
-5237-2005](http://www.metodii.com/bds52372005.pdf) Bulgarian phonetic layout
-(GNU/Linux does).
+---
 
+## **Usage**
 
-## Sample usage
-
-```
-% mkdir /tmp/icons
-% ./apple-kbd-dat-icon-extract.py -o /tmp/icons
-./apple-kbd-dat-icon-extract.py: Reading /System/Library/Keyboard Layouts/AppleKeyboardLayouts.bundle/Contents/Resources/AppleKeyboardLayouts-L.dat
-./apple-kbd-dat-icon-extract.py: Writing icon file /tmp/icons/icon1.icns
-./apple-kbd-dat-icon-extract.py: Writing icon file /tmp/icons/icon2.icns
-./apple-kbd-dat-icon-extract.py: Writing icon file /tmp/icons/icon3.icns
-...
-./apple-kbd-dat-icon-extract.py: Writing icon file /tmp/icons/icon132.icns
-%
+### **Basic Command**
+Extract icons from the default macOS `.dat` file:
+```bash
+python3 apple-kbd-dat-icon-extract.py -o icons
 ```
 
-# ipernity-downloader
-
-Ipernity download script (uses their Shell API).
-
-## Usage
-
+### **Specify a Custom DAT File**
+To extract icons from a specific `.dat` file:
+```bash
+python3 apple-kbd-dat-icon-extract.py /path/to/DAT-file.dat -o icons
 ```
-usage: ipernity-downloader.py [-h] [-v] --key KEY --secret SECRET -o OUTPUT
 
-optional arguments:
-  -h, --help            show this help message and exit
-  -v, --verbose         Be verbose
-  --key KEY             Ipernity API key
-  --secret SECRET       Ipernity API secret
-  -o OUTPUT, --output OUTPUT
-                        Download output directory
+### **Set a Custom Logging Level**
+For detailed debugging output:
+```bash
+python3 apple-kbd-dat-icon-extract.py -o icons --loglevel DEBUG
 ```
+
+---
+
+## **Installation**
+
+### **Clone the Repository**
+```bash
+git clone https://github.com/nivekschmidt/apple-kbd-icon-extractor.git
+cd apple-kbd-icon-extractor
+```
+
+### **Install Dependencies**
+The script uses the `tqdm` library for the progress bar. Install it using pip:
+```bash
+pip install tqdm
+```
+
+### **Run the Script**
+Execute the script as described in the [Usage](#usage) section.
+
+---
+
+## **License**
+This script is released under the public domain, as per the original author's license.
+
+---
+
+## **Credits**
+- Original script by [Philip Belemezov](https://github.com/phible)
+- Updated and enhanced by [Nivek Schmidt](https://github.com/nivekschmidt)
+
+---
+
+## **Contributions**
+Contributions are welcome! If you have ideas for further improvements or find a bug, feel free to:
+1. Fork the repository.
+2. Make your changes.
+3. Submit a pull request.
+
+Let's make this project even better together!
