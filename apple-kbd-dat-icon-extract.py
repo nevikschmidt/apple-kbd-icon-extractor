@@ -1,94 +1,155 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
-# Copyright (C) 2012 Philip Belemezov <philip@belemezov.net>
+# Original script by Philip Belemezov <philip@belemezov.net>
+# Updated and enhanced for Python 3 compatibility by Nivek Schmidt
 #
-# Public domain
+# This script is licensed under the public domain.
+# Improvements include:
+# - Python 3 compatibility (updated print statements, bytes handling, etc.)
+# - Improved error handling and logging
+# - Added progress bar for better user experience
 #
-
+# Contributions and further updates are welcome.
+#
+# Learn more about the improvements or connect with me:
+# GitHub: https://github.com/nivekschmidt
+#
 
 import struct
-import optparse
-import sys
+import argparse
 import os
+import logging
+from tqdm import tqdm  # For progress bar
 
-prog = os.path.basename(sys.argv[0])
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
 DEFAULT_DATFILE = "/System/Library/Keyboard Layouts/AppleKeyboardLayouts.bundle/Contents/Resources/AppleKeyboardLayouts-L.dat"
-
-parser = optparse.OptionParser(usage="Usage: %prog [options] DATFILE")
-parser.add_option("-o", "--output", dest="output",
-                  help="Output directory", metavar="OUTPUT")
-
-(opts, args) = parser.parse_args()
-if not opts.output:
-    parser.error("Please specify output dir using `-o'")
+ICNS_HEADER = b'\x69\x63\x6e\x73'  # Header for .icns files
 
 
-ICNS_HEADER = '\x69\x63\x6e\x73'
+def buffer_to_hex(buffer):
+    """Converts a byte buffer to a hex string representation."""
+    return ' '.join(f'{byte:02x}' for byte in buffer)
 
 
-def bufferToHex(buffer):
-    accumulator = ''
-    for i in range(len(buffer)):
-        accumulator += '%02x' % ord(buffer[i]) + ' '
-    return accumulator
-
-
-def findNextIcon(data, pos):
+def find_next_icon(data, start_pos):
+    """Finds the next icon in the byte data buffer."""
+    pos = start_pos
     while pos < len(data):
         if data[pos:pos + len(ICNS_HEADER)] == ICNS_HEADER:
-            pos += len(ICNS_HEADER)
-            break
-        pos += len(ICNS_HEADER)
-    return pos
+            return pos + len(ICNS_HEADER)
+        pos += 1
+    return -1
 
 
-def readIconData(data, pos, length):
-    if pos + length >= len(data):
-        return None
-    return data[pos:pos + length]
+def extract_icons(datfile, output_dir):
+    """Extracts icons from the given DAT file."""
+    if not os.path.exists(datfile):
+        logging.error(f"DAT file {datfile} does not exist.")
+        return False
 
+    if not os.access(datfile, os.R_OK):
+        logging.error(f"DAT file {datfile} cannot be read. Check permissions.")
+        return False
 
-def writeIcon(filename, iconData):
-    with open(filename, 'wb') as f:
-        f.write(ICNS_HEADER)
-        f.write(struct.pack('>I', len(iconData)))
-        f.write(iconData)
+    if os.path.getsize(datfile) == 0:
+        logging.error(f"DAT file {datfile} is empty.")
+        return False
 
+    if not os.path.exists(output_dir):
+        logging.info(f"Creating output directory: {output_dir}")
+        os.makedirs(output_dir)
 
-def processIcons(data, outputDir):
-    if not os.path.exists(outputDir):
-        print "%s: Output directory %s doesn't exist, please create it first" \
-                % (prog, outputDir)
-        return 1
+    with open(datfile, "rb") as f:
+        data = f.read()
 
-    iconIndex = 1
-    pos = findNextIcon(data, 0)
-    while pos < len(data):
-        iconLen = struct.unpack('>I', data[pos:pos+4])[0]
-        pos += 4
-        iconData = readIconData(data, pos, iconLen)
-        assert iconLen == len(iconData)
+    if len(data) < len(ICNS_HEADER):
+        logging.error("The file is too small to contain valid data.")
+        return False
 
-        filename = os.path.join(outputDir, 'icon%d.icns' % iconIndex)
-        print "%s: Writing icon file %s" % (prog, filename)
-        writeIcon(filename, iconData)
+    pos = 0
+    icon_count = 0
 
-        iconIndex += 1
-        pos = findNextIcon(data, pos)
-    return 0
+    logging.info("Starting icon extraction...")
+
+    # Progress bar based on file size
+    with tqdm(total=len(data), unit="B", unit_scale=True, desc="Extracting Icons") as progress:
+        while pos < len(data):
+            pos = find_next_icon(data, pos)
+            if pos == -1:
+                break
+
+            # Extract icon data
+            if pos + 4 > len(data):
+                logging.warning("Incomplete icon data found. Skipping...")
+                break
+
+            try:
+                icon_data_size = struct.unpack(">I", data[pos:pos + 4])[0]
+            except struct.error:
+                logging.warning("Invalid icon size detected. Skipping...")
+                break
+
+            if pos + icon_data_size > len(data):
+                logging.warning("Icon data size exceeds file length. Skipping...")
+                break
+
+            icon_data = data[pos:pos + icon_data_size]
+
+            # Save the icon file
+            icon_filename = os.path.join(output_dir, f"icon_{icon_count:04d}.icns")
+            try:
+                with open(icon_filename, "wb") as icon_file:
+                    icon_file.write(icon_data)
+                logging.info(f"Extracted icon {icon_count + 1} to {icon_filename}")
+            except IOError as e:
+                logging.error(f"Failed to write icon file: {e}")
+                return False
+
+            icon_count += 1
+            pos += icon_data_size
+            progress.update(icon_data_size)
+
+    logging.info(f"Extraction complete. {icon_count} icons extracted.")
+    return True
+
 
 def main():
-    if not args:
-        filename = DEFAULT_DATFILE
-    else:
-        filename = args[0]
+    """Main function to parse arguments and initiate extraction."""
+    parser = argparse.ArgumentParser(
+        description="Extract icons from macOS keyboard layout DAT files."
+    )
+    parser.add_argument(
+        "datfile",
+        nargs="?",
+        default=DEFAULT_DATFILE,
+        help="Path to the DAT file (default: AppleKeyboardLayouts-L.dat)"
+    )
+    parser.add_argument(
+        "-o", "--output",
+        required=True,
+        help="Output directory for extracted icons"
+    )
+    parser.add_argument(
+        "-l", "--loglevel",
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+        help="Set the logging level (default: INFO)"
+    )
 
-    print "%s: Reading %s" % (prog, filename)
-    data = None
-    with open(filename, "rb") as f:
-        data = f.read()
-    return processIcons(data, outputDir=opts.output)
+    args = parser.parse_args()
+
+    # Set logging level dynamically
+    logging.getLogger().setLevel(args.loglevel)
+
+    if not extract_icons(args.datfile, args.output):
+        logging.error("Extraction failed. Check the logs for details.")
+        sys.exit(1)
+
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()
