@@ -63,7 +63,7 @@ This script is released under the public domain, as per the original author's li
 
 ## **Credits**
 - Original script by [Philip Belemezov](https://github.com/phible)
-- Updated and enhanced by [Nivek Schmidt](https://github.com/nivekschmidt)
+- Updated and enhanced by [Nevik Schmidt](https://github.com/nevikkschmidt)
 
 ---
 
